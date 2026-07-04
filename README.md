@@ -1,4 +1,4 @@
-# 📊 Stock Return Calculator
+# Stock Return Calculator
 
 **ThinkSabio Internship 2026 — Technology Track — Project 5**
 
@@ -6,7 +6,7 @@ A user-friendly stock return calculator that computes investment value, current/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 To use live data features locally (fetching live prices from Yahoo Finance), install the `yfinance` library:
@@ -52,7 +52,7 @@ You can deploy this project to **Vercel** with fully functioning live Yahoo Fina
 
 ---
 
-## 📥 Inputs
+## Inputs
 
 | Input              | Required | Description                                   |
 |--------------------|----------|-----------------------------------------------|
@@ -64,7 +64,7 @@ You can deploy this project to **Vercel** with fully functioning live Yahoo Fina
 
 ---
 
-## 📤 Outputs
+## Outputs
 
 | Output              | Description                                          |
 |---------------------|------------------------------------------------------|
@@ -77,7 +77,7 @@ You can deploy this project to **Vercel** with fully functioning live Yahoo Fina
 
 ---
 
-## 📐 Formulas
+## Formulas
 
 ```
 Investment       = Buy Price × Quantity
@@ -91,7 +91,7 @@ Percentage Return = (Profit / Loss ÷ Investment) × 100
 
 ---
 
-## 🧪 Test Cases
+## Test Cases
 
 The calculator ships with **5 built-in test cases** as required by the project spec:
 
@@ -109,13 +109,13 @@ The calculator ships with **5 built-in test cases** as required by the project s
 
 ---
 
-## 📈 Scenario Table (Optional Extra)
+## Scenario Table (Optional Extra)
 
 Both the Python and web versions include a **what-if scenario table** that shows estimated results if the stock price moves by **±5%, ±10%, and ±20%** from the current price. This helps users visualize risk and upside potential.
 
 ---
 
-## ✅ Validation Rules
+## Validation Rules
 
 - **Buy price** must be greater than 0.
 - **Current price** must be 0 or greater.
@@ -125,7 +125,7 @@ Both the Python and web versions include a **what-if scenario table** that shows
 
 ---
 
-## 🗂 Project Files
+## Project Files
 
 ```
 Stock/
@@ -141,7 +141,7 @@ Stock/
 
 ---
 
-## ⚠️ Common Mistakes Avoided
+## Common Mistakes Avoided
 
 1. **Dollar gain vs. percentage gain** — Both are shown separately with clear labels.
 2. **Quantity matters** — Investment and value use `price × quantity`, not just price difference.
@@ -151,7 +151,7 @@ Stock/
 
 ---
 
-## 💻 Requirements
+## Requirements
 
 - **Python version:** Python 3.6+
 - **Web version:** Any modern browser (Chrome, Firefox, Edge, Safari)
