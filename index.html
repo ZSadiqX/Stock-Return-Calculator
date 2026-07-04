@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stock Return Calculator — Calculate investment value, profit/loss, and percentage return on stock trades with real-time Yahoo Finance data.">
+    <title>Stock Return Calculator | ThinkSabio</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ── CSS Reset & Variables ──────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary:    #0a0e1a;
+            --bg-secondary:  #111827;
+            --bg-card:       rgba(17, 24, 39, 0.7);
+            --bg-input:      rgba(30, 41, 59, 0.6);
+            --border:        rgba(99, 102, 241, 0.15);
+            --border-focus:  rgba(99, 102, 241, 0.5);
+            --text-primary:  #f1f5f9;
+            --text-secondary:#94a3b8;
+            --text-muted:    #64748b;
+            --accent:        #818cf8;
+            --accent-glow:   rgba(129, 140, 248, 0.25);
+            --profit:        #34d399;
+            --profit-bg:     rgba(52, 211, 153, 0.1);
+            --loss:          #f87171;
+            --loss-bg:       rgba(248, 113, 113, 0.1);
+            --even:          #fbbf24;
+            --even-bg:       rgba(251, 191, 36, 0.1);
+            --glass:         rgba(255, 255, 255, 0.03);
+            --radius:        14px;
+            --radius-sm:     10px;
+            --shadow:        0 8px 32px rgba(0, 0, 0, 0.3);
+            --transition:    0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ── Animated Background ───────────────────────────── */
+        .bg-grid {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        .bg-glow {
+            position: fixed; z-index: 0; pointer-events: none;
+            width: 600px; height: 600px; border-radius: 50%;
+            filter: blur(120px); opacity: 0.15;
+            animation: float 20s ease-in-out infinite alternate;
+        }
+        .bg-glow--1 { top: -200px; left: -100px;  background: #818cf8; }
+        .bg-glow--2 { bottom: -200px; right: -100px; background: #34d399; animation-delay: -10s; }
+
+        @keyframes float {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(60px, 40px) scale(1.15); }
+        }
+
+        /* ── Layout ────────────────────────────────────────── */
+        .app {
+            position: relative; z-index: 1;
+            max-width: 1100px; margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* ── Header ────────────────────────────────────────── */
+        .header {
+            text-align: center; margin-bottom: 48px;
+        }
+        .header__badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 16px; border-radius: 999px;
+            background: var(--glass); border: 1px solid var(--border);
+            font-size: 0.75rem; color: var(--accent);
+            letter-spacing: 0.08em; text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+        .header__badge span { font-size: 1rem; }
+        .header h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #f1f5f9, #818cf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.15; margin-bottom: 10px;
+        }
+        .header p { color: var(--text-secondary); font-size: 1.05rem; max-width: 580px; margin: 0 auto; }
+
+        /* ── Card / Glass Panel ─────────────────────────────── */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            box-shadow: var(--shadow);
+            transition: border-color var(--transition);
+        }
+        .card:hover { border-color: rgba(99,102,241,0.25); }
+        .card + .card { margin-top: 28px; }
+
+        .card__title {
+            font-size: 1.1rem; font-weight: 600; margin-bottom: 24px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card__title span { font-size: 1.3rem; }
+
+        /* ── Mode Toggle ───────────────────────────────────── */
+        .mode-toggle {
+            display: flex; gap: 0; margin-bottom: 28px;
+            background: var(--bg-input); border-radius: var(--radius-sm);
+            border: 1px solid var(--border); overflow: hidden;
+        }
+        .mode-toggle__btn {
+            flex: 1; padding: 14px 20px; border: none;
+            background: transparent; color: var(--text-muted);
+            font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all var(--transition);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            position: relative;
+        }
+        .mode-toggle__btn.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.08));
+            color: var(--accent);
+        }
+        .mode-toggle__btn.active::after {
+            content: ''; position: absolute; bottom: 0; left: 10%; right: 10%;
+            height: 2px; background: var(--accent); border-radius: 2px;
+        }
+        .mode-toggle__btn:hover:not(.active) { color: var(--text-secondary); }
+
+        .live-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--profit); display: inline-block;
+            animation: pulse-anim 2s ease-in-out infinite;
+        }
+
+        /* ── Live Data Bar ─────────────────────────────────── */
+        .live-bar {
+            display: none; align-items: center; gap: 12px;
+            margin-bottom: 20px; padding: 14px 18px;
+            background: rgba(52, 211, 153, 0.06);
+            border: 1px solid rgba(52, 211, 153, 0.15);
+            border-radius: var(--radius-sm);
+        }
+        .live-bar.visible { display: flex; }
+        .live-bar__info {
+            flex: 1; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;
+        }
+        .live-bar__price {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.4rem; font-weight: 700; color: var(--text-primary);
+        }
+        .live-bar__change { font-size: 0.85rem; font-weight: 600; margin-left: 4px; }
+        .live-bar__change.up   { color: var(--profit); }
+        .live-bar__change.down { color: var(--loss); }
+        .live-bar__meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+        .fetch-btn {
+            padding: 10px 20px; border: none; border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, #34d399, #059669);
+            color: #fff; font-family: 'Inter', sans-serif;
+            font-weight: 600; font-size: 0.82rem; cursor: pointer;
+            transition: all var(--transition); white-space: nowrap;
+        }
+        .fetch-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(52,211,153,0.3); }
+        .fetch-btn:disabled {
+            opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none;
+        }
+
+        .server-note {
+            display: none; margin-bottom: 20px; padding: 12px 16px;
+            background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.15);
+            border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--even);
+            line-height: 1.6;
+        }
+        .server-note.visible { display: block; }
+        .server-note code {
+            background: rgba(251,191,36,0.1); padding: 2px 8px;
+            border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+        }
+
+        /* ── Form Grid ─────────────────────────────────────── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full-width { grid-column: 1 / -1; }
+
+        label {
+            font-size: 0.8rem; font-weight: 500;
+            color: var(--text-secondary); letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        input, select {
+            width: 100%; padding: 12px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            outline: none;
+        }
+        input::placeholder { color: var(--text-muted); font-family: 'Inter', sans-serif; }
+        input:focus, select:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        input.invalid { border-color: var(--loss); box-shadow: 0 0 0 3px rgba(248,113,113,0.15); }
+        input:read-only {
+            opacity: 0.7; cursor: not-allowed;
+            border-color: rgba(52,211,153,0.25);
+            background: rgba(52,211,153,0.04);
+        }
+
+        .error-msg {
+            font-size: 0.75rem; color: var(--loss); min-height: 18px; margin-top: 2px;
+        }
+
+        /* ── Buttons ───────────────────────────────────────── */
+        .btn-row {
+            display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 13px 28px; border: none; border-radius: var(--radius-sm);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; transition: all var(--transition);
+            letter-spacing: 0.02em;
+        }
+        .btn--primary {
+            background: linear-gradient(135deg, #818cf8, #6366f1);
+            color: #fff; box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+        }
+        .btn--primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 28px rgba(99,102,241,0.5);
+        }
+        .btn--primary:active { transform: translateY(0); }
+        .btn--ghost {
+            background: var(--glass); color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn--ghost:hover { border-color: var(--border-focus); color: var(--text-primary); }
+
+        /* ── Results ───────────────────────────────────────── */
+        .results { display: none; }
+        .results.visible { display: block; animation: fadeUp 0.5s ease; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px; margin-bottom: 28px;
+        }
+        .result-symbol {
+            font-size: 1.5rem; font-weight: 700;
+        }
+        .result-source {
+            font-size: 0.72rem; color: var(--text-muted);
+            font-weight: 400; margin-left: 8px;
+        }
+        .result-badge {
+            padding: 8px 20px; border-radius: 999px;
+            font-weight: 700; font-size: 0.85rem; letter-spacing: 0.04em;
+        }
+        .result-badge--profit  { background: var(--profit-bg); color: var(--profit); }
+        .result-badge--loss    { background: var(--loss-bg);    color: var(--loss); }
+        .result-badge--even    { background: var(--even-bg);    color: var(--even); }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 28px;
+        }
+
+        .metric {
+            padding: 20px; border-radius: var(--radius-sm);
+            background: var(--glass); border: 1px solid var(--border);
+            transition: transform var(--transition), border-color var(--transition);
+        }
+        .metric:hover { transform: translateY(-3px); border-color: rgba(99,102,241,0.3); }
+        .metric__label {
+            font-size: 0.72rem; text-transform: uppercase;
+            color: var(--text-muted); letter-spacing: 0.08em; margin-bottom: 6px;
+        }
+        .metric__value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem; font-weight: 600;
+        }
+        .metric__value--profit { color: var(--profit); }
+        .metric__value--loss   { color: var(--loss); }
+        .metric__value--even   { color: var(--even); }
+
+        /* ── Formula Breakdown ─────────────────────────────── */
+        .breakdown {
+            background: var(--glass); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 20px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+            color: var(--text-secondary); line-height: 2;
+        }
+        .breakdown .hl { color: var(--accent); font-weight: 500; }
+
+        /* ── Scenario Table ────────────────────────────────── */
+        .scenario-section { display: none; margin-top: 28px; }
+        .scenario-section.visible { display: block; animation: fadeUp 0.5s ease; }
+
+        .table-wrap {
+            overflow-x: auto; border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%; border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+        thead { background: rgba(99,102,241,0.08); }
+        th {
+            padding: 14px 18px; text-align: left;
+            font-weight: 600; font-size: 0.72rem;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 13px 18px;
+            font-family: 'JetBrains Mono', monospace;
+            border-bottom: 1px solid rgba(99,102,241,0.06);
+            transition: background var(--transition);
+        }
+        tr:hover td { background: rgba(99,102,241,0.04); }
+        tr.current-row td {
+            background: rgba(99,102,241,0.06);
+            font-weight: 600;
+        }
+
+        .tag-profit { color: var(--profit); }
+        .tag-loss   { color: var(--loss); }
+        .tag-even   { color: var(--even); }
+
+        /* ── Footer ────────────────────────────────────────── */
+        .footer {
+            text-align: center; margin-top: 60px;
+            color: var(--text-muted); font-size: 0.8rem;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+
+        /* ── Responsive ────────────────────────────────────── */
+        @media (max-width: 600px) {
+            .app { padding: 24px 14px 48px; }
+            .card { padding: 22px 18px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .metrics { grid-template-columns: 1fr 1fr; }
+            .mode-toggle { flex-direction: column; }
+            .live-bar { flex-direction: column; align-items: flex-start; }
+        }
+
+        /* ── Ticker Tape ────────────────────────────────── */
+        .ticker-wrap {
+            overflow: hidden;
+            background: rgba(99,102,241,0.05);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 40px;
+            padding: 10px 0;
+        }
+        .ticker {
+            display: flex; gap: 48px;
+            animation: scroll 40s linear infinite;
+            width: max-content;
+        }
+        .ticker__item {
+            display: flex; align-items: center; gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;
+        }
+        .ticker__item .up   { color: var(--profit); }
+        .ticker__item .down { color: var(--loss); }
+
+        @keyframes scroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* ── Pulse dot ──────────────────────────────────── */
+        .pulse {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--profit); display: inline-block;
+            animation: pulse-anim 2s ease-in-out infinite;
+        }
+        @keyframes pulse-anim {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%      { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* ── Spinner ────────────────────────────────────── */
+        .spinner {
+            width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin 0.6s linear infinite; display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- Background Effects -->
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow--1"></div>
+<div class="bg-glow bg-glow--2"></div>
+
+<!-- Ticker Tape -->
+<div class="ticker-wrap" aria-hidden="true">
+    <div class="ticker" id="ticker"></div>
+</div>
+
+<div class="app">
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header__badge"><span>📊</span> ThinkSabio — Project 5</div>
+        <h1>Stock Return Calculator</h1>
+        <p>Calculate your investment returns with manual input or real-time Yahoo Finance data.</p>
+    </header>
+
+    <!-- Input Card -->
+    <section class="card" id="input-card">
+        <div class="card__title"><span>🔢</span> Trade Details</div>
+
+        <!-- Mode Toggle -->
+        <div class="mode-toggle" id="modeToggle">
+            <button class="mode-toggle__btn active" data-mode="manual" id="manualBtn">
+                ✏️&nbsp; Manual Input
+            </button>
+            <button class="mode-toggle__btn" data-mode="live" id="liveBtn">
+                <span class="live-dot"></span>&nbsp; Live Data (Yahoo Finance)
+            </button>
+        </div>
+
+        <!-- Server note (shown when live mode is selected but server isn't running) -->
+        <div class="server-note" id="serverNote">
+            ⚠️ <strong>Live data requires the local server.</strong> Run
+            <code>py server.py</code> then open
+            <code>http://localhost:8000</code> in your browser.
+        </div>
+
+        <!-- Live data bar -->
+        <div class="live-bar" id="liveBar">
+            <div class="live-bar__info">
+                <div>
+                    <span class="live-bar__price" id="livePrice">—</span>
+                    <span class="live-bar__change" id="liveChange"></span>
+                </div>
+                <div class="live-bar__meta" id="liveMeta">Enter a symbol and click Fetch</div>
+            </div>
+            <button class="fetch-btn" id="fetchBtn">⚡ Fetch Price</button>
+        </div>
+
+        <form id="calcForm" novalidate>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="symbol">Stock Symbol</label>
+                    <input type="text" id="symbol" placeholder="e.g. AAPL" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="buyPrice">Buy Price ($)</label>
+                    <input type="number" id="buyPrice" placeholder="0.00" min="0" step="0.01">
+                    <div class="error-msg" id="buyPriceErr"></div>
+                </div>
+                <div class="form-group">
+                    <label for="currentPrice">Current / Sell Price ($)</label>
+                    <input type="number" id="currentPrice" placeholder="0.00" min="0" step="0.01">
+                    <div class="error-msg" id="currentPriceErr"></div>
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantity (Shares)</label>
+                    <input type="number" id="quantity" placeholder="0" min="1" step="1">
+                    <div class="error-msg" id="quantityErr"></div>
+                </div>
+                <div class="form-group">
+                    <label for="fees">Brokerage / Fees ($)</label>
+                    <input type="number" id="fees" placeholder="0.00" min="0" step="0.01" value="0">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="submit" class="btn btn--primary" id="calcBtn">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                    Calculate Return
+                </button>
+                <button type="button" class="btn btn--ghost" id="resetBtn">Reset</button>
+                <button type="button" class="btn btn--ghost" id="testBtn">
+                    🧪 Run 5 Tests
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Results Card -->
+    <section class="card results" id="results">
+        <div class="result-header">
+            <div>
+                <span class="result-symbol" id="resSymbol">AAPL</span>
+                <span class="result-source" id="resSource"></span>
+            </div>
+            <div class="result-badge" id="resBadge">PROFIT</div>
+        </div>
+
+        <div class="metrics" id="metricsGrid"></div>
+
+        <details>
+            <summary style="cursor:pointer; color:var(--text-secondary); font-size:0.85rem; margin-bottom:12px;">
+                📐 Show Formula Breakdown
+            </summary>
+            <div class="breakdown" id="breakdown"></div>
+        </details>
+    </section>
+
+    <!-- Scenario Table -->
+    <section class="card scenario-section" id="scenarioSection">
+        <div class="card__title"><span>📈</span> What-If Scenario Table</div>
+        <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:18px;">
+            Estimated results if the stock price moves by ±5%, ±10%, or ±20% from the current price.
+        </p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Change</th>
+                        <th>New Price</th>
+                        <th>New Value</th>
+                        <th>Profit / Loss</th>
+                        <th>Return %</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="scenarioBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Test Results -->
+    <section class="card results" id="testResults">
+        <div class="card__title"><span>🧪</span> Test Suite — 5 Required Cases</div>
+        <div id="testContent"></div>
+    </section>
+
+    <footer class="footer">
+        <p>ThinkSabio Internship 2026 · Technology Track · Project 5</p>
+        <p style="margin-top:4px;">
+            Formulas: Investment = Buy × Qty &nbsp;|&nbsp; Value = Price × Qty &nbsp;|&nbsp;
+            P/L = Value − Investment − Fees &nbsp;|&nbsp; Return% = P/L ÷ Investment × 100
+        </p>
+        <p style="margin-top:4px;">Live data powered by Yahoo Finance via yfinance</p>
+    </footer>
+</div>
+
+<script>
+// ═════════════════════════════════════════════════════
+//  STATE
+// ═════════════════════════════════════════════════════
+let currentMode = 'manual';      // 'manual' | 'live'
+let liveData = null;             // last fetched quote
+let serverAvailable = null;      // null = unknown, true/false
+
+// ═════════════════════════════════════════════════════
+//  API BASE (local server)
+// ═════════════════════════════════════════════════════
+const API_BASE = window.location.origin;
+
+async function checkServer() {
+    try {
+        const r = await fetch(API_BASE + '/api/quote/AAPL', { signal: AbortSignal.timeout(3000) });
+        serverAvailable = r.ok;
+    } catch { serverAvailable = false; }
+}
+
+// ═════════════════════════════════════════════════════
+//  TICKER TAPE (decorative)
+// ═════════════════════════════════════════════════════
+(function initTicker() {
+    const tickers = [
+        { sym: 'AAPL',  price: '198.42', chg: '+1.23%', up: true },
+        { sym: 'MSFT',  price: '442.18', chg: '+0.67%', up: true },
+        { sym: 'GOOGL', price: '178.31', chg: '-0.42%', up: false },
+        { sym: 'AMZN',  price: '193.55', chg: '+2.15%', up: true },
+        { sym: 'TSLA',  price: '248.90', chg: '-1.87%', up: false },
+        { sym: 'NVDA',  price: '125.83', chg: '+3.41%', up: true },
+        { sym: 'META',  price: '508.22', chg: '+0.95%', up: true },
+        { sym: 'NFLX',  price: '685.10', chg: '-0.33%', up: false },
+    ];
+    const el = document.getElementById('ticker');
+    const html = [...tickers, ...tickers].map(t =>
+        `<span class="ticker__item">
+            <strong>${t.sym}</strong> $${t.price}
+            <span class="${t.up ? 'up' : 'down'}">${t.chg}</span>
+        </span>`
+    ).join('');
+    el.innerHTML = html;
+})();
+
+// ═════════════════════════════════════════════════════
+//  CORE CALCULATOR
+// ═════════════════════════════════════════════════════
+function calcReturn(buyPrice, currentPrice, quantity, fees = 0) {
+    const investment   = buyPrice * quantity;
+    const currentValue = currentPrice * quantity;
+    const profitLoss   = currentValue - investment - fees;
+    const pctReturn    = investment !== 0 ? (profitLoss / investment) * 100 : 0;
+
+    let status;
+    if (profitLoss > 0.005)       status = 'profit';
+    else if (profitLoss < -0.005) status = 'loss';
+    else                          status = 'even';
+
+    return {
+        investment:   Math.round(investment * 100) / 100,
+        currentValue: Math.round(currentValue * 100) / 100,
+        fees:         Math.round(fees * 100) / 100,
+        profitLoss:   Math.round(profitLoss * 100) / 100,
+        pctReturn:    Math.round(pctReturn * 100) / 100,
+        status,
+    };
+}
+
+// ═════════════════════════════════════════════════════
+//  CURRENCY / PERCENT FORMATTERS
+// ═════════════════════════════════════════════════════
+const fmtUSD = v => '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPct = v => Math.abs(v).toFixed(2) + '%';
+const sign   = v => v > 0 ? '+' : v < 0 ? '−' : '';
+
+// ═════════════════════════════════════════════════════
+//  MODE TOGGLE
+// ═════════════════════════════════════════════════════
+document.querySelectorAll('.mode-toggle__btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentMode = btn.dataset.mode;
+        document.querySelectorAll('.mode-toggle__btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateModeUI();
+    });
+});
+
+async function updateModeUI() {
+    const liveBar    = document.getElementById('liveBar');
+    const priceInput = document.getElementById('currentPrice');
+    const note       = document.getElementById('serverNote');
+
+    if (currentMode === 'live') {
+        liveBar.classList.add('visible');
+        priceInput.readOnly = true;
+        priceInput.placeholder = 'Fetched from Yahoo Finance';
+
+        // Check server on first switch
+        if (serverAvailable === null) await checkServer();
+        note.classList.toggle('visible', !serverAvailable);
+    } else {
+        liveBar.classList.remove('visible');
+        note.classList.remove('visible');
+        priceInput.readOnly = false;
+        priceInput.placeholder = '0.00';
+        priceInput.value = '';
+        liveData = null;
+        document.getElementById('livePrice').textContent = '—';
+        document.getElementById('liveChange').textContent = '';
+        document.getElementById('liveMeta').textContent = 'Enter a symbol and click Fetch';
+    }
+}
+
+// ═════════════════════════════════════════════════════
+//  FETCH LIVE PRICE
+// ═════════════════════════════════════════════════════
+document.getElementById('fetchBtn').addEventListener('click', async () => {
+    const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+    if (!symbol) {
+        document.getElementById('liveMeta').textContent = 'Please enter a stock symbol first.';
+        return;
+    }
+
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Fetching...';
+    document.getElementById('liveMeta').textContent = `Fetching ${symbol}...`;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/quote/${symbol}`, { signal: AbortSignal.timeout(10000) });
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            throw new Error(data.error || 'Failed to fetch');
+        }
+
+        liveData = data;
+        document.getElementById('livePrice').textContent = '$' + data.price.toFixed(2);
+
+        const changeEl = document.getElementById('liveChange');
+        if (data.changePct != null) {
+            const up = data.change >= 0;
+            changeEl.textContent = `(${up ? '+' : ''}${data.change.toFixed(2)} / ${up ? '+' : ''}${data.changePct.toFixed(2)}%)`;
+            changeEl.className = 'live-bar__change ' + (up ? 'up' : 'down');
+        } else {
+            changeEl.textContent = '';
+        }
+
+        let meta = `${data.symbol} · Yahoo Finance`;
+        if (data.dayHigh && data.dayLow) meta += ` · Day: $${data.dayLow} – $${data.dayHigh}`;
+        document.getElementById('liveMeta').textContent = meta;
+
+        // Auto-fill the current price input
+        document.getElementById('currentPrice').value = data.price.toFixed(2);
+
+    } catch (err) {
+        document.getElementById('livePrice').textContent = '—';
+        document.getElementById('liveChange').textContent = '';
+        document.getElementById('liveMeta').textContent = `Error: ${err.message}`;
+        liveData = null;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '⚡ Fetch Price';
+    }
+});
+
+// ═════════════════════════════════════════════════════
+//  VALIDATION
+// ═════════════════════════════════════════════════════
+function validate() {
+    let ok = true;
+    const checks = [
+        { id: 'buyPrice',     err: 'buyPriceErr',     msg: 'Buy price is required and must be > 0' },
+        { id: 'currentPrice', err: 'currentPriceErr', msg: 'Current price is required and must be ≥ 0' },
+        { id: 'quantity',     err: 'quantityErr',     msg: 'Quantity must be a whole number ≥ 1' },
+    ];
+    checks.forEach(c => {
+        const input = document.getElementById(c.id);
+        const errEl = document.getElementById(c.err);
+        const v = input.value.trim();
+        let invalid = false;
+        if (c.id === 'quantity') {
+            invalid = v === '' || isNaN(v) || Number(v) < 1 || !Number.isInteger(Number(v));
+        } else if (c.id === 'buyPrice') {
+            invalid = v === '' || isNaN(v) || Number(v) <= 0;
+        } else {
+            invalid = v === '' || isNaN(v) || Number(v) < 0;
+        }
+        if (invalid) {
+            input.classList.add('invalid');
+            errEl.textContent = c.msg;
+            ok = false;
+        } else {
+            input.classList.remove('invalid');
+            errEl.textContent = '';
+        }
+    });
+    return ok;
+}
+
+// ═════════════════════════════════════════════════════
+//  RENDER RESULTS
+// ═════════════════════════════════════════════════════
+function renderResults(symbol, r, source) {
+    document.getElementById('resSymbol').textContent = symbol || 'N/A';
+    document.getElementById('resSource').textContent = source || '';
+
+    const badge = document.getElementById('resBadge');
+    badge.className = 'result-badge';
+    if (r.status === 'profit') {
+        badge.textContent = '📈 PROFIT';
+        badge.classList.add('result-badge--profit');
+    } else if (r.status === 'loss') {
+        badge.textContent = '📉 LOSS';
+        badge.classList.add('result-badge--loss');
+    } else {
+        badge.textContent = '⚖️ BREAK-EVEN';
+        badge.classList.add('result-badge--even');
+    }
+
+    const colorClass = 'metric__value--' + r.status;
+    const grid = document.getElementById('metricsGrid');
+    grid.innerHTML = [
+        { label: 'Total Investment', value: fmtUSD(r.investment) },
+        { label: 'Current / Sell Value', value: fmtUSD(r.currentValue) },
+        { label: 'Brokerage / Fees', value: fmtUSD(r.fees) },
+        { label: 'Profit / Loss', value: sign(r.profitLoss) + fmtUSD(r.profitLoss), colored: true },
+        { label: 'Percentage Return', value: sign(r.pctReturn) + fmtPct(r.pctReturn), colored: true },
+    ].map(m => `
+        <div class="metric">
+            <div class="metric__label">${m.label}</div>
+            <div class="metric__value ${m.colored ? colorClass : ''}">${m.value}</div>
+        </div>
+    `).join('');
+
+    const buyP = document.getElementById('buyPrice').value;
+    const curP = document.getElementById('currentPrice').value;
+    const qty  = document.getElementById('quantity').value;
+    const fees = document.getElementById('fees').value || '0';
+
+    document.getElementById('breakdown').innerHTML =
+        `<span class="hl">Investment</span>  = ${buyP} × ${qty} = <strong>${fmtUSD(r.investment)}</strong>\n` +
+        `<span class="hl">Value</span>       = ${curP} × ${qty} = <strong>${fmtUSD(r.currentValue)}</strong>\n` +
+        `<span class="hl">Profit/Loss</span> = ${fmtUSD(r.currentValue)} − ${fmtUSD(r.investment)} − ${fmtUSD(r.fees)} = <strong>${sign(r.profitLoss)}${fmtUSD(r.profitLoss)}</strong>\n` +
+        `<span class="hl">Return %</span>    = (${sign(r.profitLoss)}${fmtUSD(r.profitLoss)} ÷ ${fmtUSD(r.investment)}) × 100 = <strong>${sign(r.pctReturn)}${fmtPct(r.pctReturn)}</strong>`;
+
+    document.getElementById('results').classList.add('visible');
+}
+
+// ═════════════════════════════════════════════════════
+//  SCENARIO TABLE
+// ═════════════════════════════════════════════════════
+function renderScenarios(buyPrice, currentPrice, quantity, fees) {
+    const changes = [-20, -10, -5, 0, 5, 10, 20];
+    const body = document.getElementById('scenarioBody');
+    body.innerHTML = changes.map(pct => {
+        const newPrice = currentPrice * (1 + pct / 100);
+        const r = calcReturn(buyPrice, newPrice, quantity, fees);
+        const cls = r.status === 'profit' ? 'tag-profit' : r.status === 'loss' ? 'tag-loss' : 'tag-even';
+        const statusLabel = r.status === 'profit' ? '📈 Profit' : r.status === 'loss' ? '📉 Loss' : '⚖️ Even';
+        const rowCls = pct === 0 ? 'current-row' : '';
+        const pctLabel = pct === 0 ? '0% (current)' : (pct > 0 ? '+' : '') + pct + '%';
+        return `<tr class="${rowCls}">
+            <td>${pctLabel}</td>
+            <td>${fmtUSD(newPrice)}</td>
+            <td>${fmtUSD(r.currentValue)}</td>
+            <td class="${cls}">${sign(r.profitLoss)}${fmtUSD(r.profitLoss)}</td>
+            <td class="${cls}">${sign(r.pctReturn)}${fmtPct(r.pctReturn)}</td>
+            <td class="${cls}">${statusLabel}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('scenarioSection').classList.add('visible');
+}
+
+// ═════════════════════════════════════════════════════
+//  TEST SUITE (5 cases)
+// ═════════════════════════════════════════════════════
+function runTests() {
+    const tests = [
+        { name: 'Profit Case',                 sym: 'AAPL', buy: 150,    cur: 175,    qty: 10, fees: 0,    expect: 'profit' },
+        { name: 'Loss Case',                   sym: 'TSLA', buy: 250,    cur: 210,    qty: 5,  fees: 0,    expect: 'loss'   },
+        { name: 'Break-Even Case',             sym: 'MSFT', buy: 300,    cur: 300,    qty: 8,  fees: 0,    expect: 'even'   },
+        { name: 'Decimal Price Case',          sym: 'AMZN', buy: 127.53, cur: 134.87, qty: 15, fees: 0,    expect: 'profit' },
+        { name: 'Fee Case (profit eaten)',      sym: 'GOOG', buy: 140,    cur: 142,    qty: 10, fees: 25,   expect: 'loss'   },
+    ];
+    const el = document.getElementById('testContent');
+    let html = '<div style="display:grid; gap:14px;">';
+    let allPassed = true;
+    tests.forEach((t, i) => {
+        const r = calcReturn(t.buy, t.cur, t.qty, t.fees);
+        const passed = r.status === t.expect;
+        if (!passed) allPassed = false;
+        const icon = passed ? '✅' : '❌';
+        const cls = r.status === 'profit' ? 'tag-profit' : r.status === 'loss' ? 'tag-loss' : 'tag-even';
+        html += `
+        <div style="background:var(--glass); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+            <div style="font-weight:600; margin-bottom:8px;">${icon} Test ${i+1}: ${t.name}</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:6px; font-size:0.82rem; color:var(--text-secondary); font-family:'JetBrains Mono',monospace;">
+                <span>Symbol: <strong>${t.sym}</strong></span>
+                <span>Buy: <strong>$${t.buy.toFixed(2)}</strong></span>
+                <span>Current: <strong>$${t.cur.toFixed(2)}</strong></span>
+                <span>Qty: <strong>${t.qty}</strong></span>
+                <span>Fees: <strong>$${t.fees.toFixed(2)}</strong></span>
+                <span>Investment: <strong>${fmtUSD(r.investment)}</strong></span>
+                <span>Value: <strong>${fmtUSD(r.currentValue)}</strong></span>
+                <span class="${cls}">P/L: <strong>${sign(r.profitLoss)}${fmtUSD(r.profitLoss)}</strong></span>
+                <span class="${cls}">Return: <strong>${sign(r.pctReturn)}${fmtPct(r.pctReturn)}</strong></span>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    html += `<div style="margin-top:18px; text-align:center; font-weight:700; font-size:1.1rem; color:${allPassed ? 'var(--profit)' : 'var(--loss)'};">
+        ${allPassed ? '✅ All 5 Tests Passed!' : '❌ Some Tests Failed'}
+    </div>`;
+    el.innerHTML = html;
+    document.getElementById('testResults').classList.add('visible');
+    document.getElementById('testResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═════════════════════════════════════════════════════
+document.getElementById('calcForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const symbol  = document.getElementById('symbol').value.trim().toUpperCase();
+    const buy     = parseFloat(document.getElementById('buyPrice').value);
+    const current = parseFloat(document.getElementById('currentPrice').value);
+    const qty     = parseInt(document.getElementById('quantity').value, 10);
+    const fees    = parseFloat(document.getElementById('fees').value) || 0;
+
+    const source = currentMode === 'live' && liveData
+        ? '· Live price from Yahoo Finance'
+        : '· Manual input';
+
+    const r = calcReturn(buy, current, qty, fees);
+    renderResults(symbol, r, source);
+    renderScenarios(buy, current, qty, fees);
+
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+    document.getElementById('calcForm').reset();
+    document.getElementById('fees').value = '0';
+    document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+    document.querySelectorAll('.error-msg').forEach(el => el.textContent = '');
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('scenarioSection').classList.remove('visible');
+    document.getElementById('testResults').classList.remove('visible');
+
+    // Reset live bar
+    liveData = null;
+    document.getElementById('livePrice').textContent = '—';
+    document.getElementById('liveChange').textContent = '';
+    document.getElementById('liveMeta').textContent = 'Enter a symbol and click Fetch';
+    if (currentMode === 'live') {
+        document.getElementById('currentPrice').readOnly = true;
+        document.getElementById('currentPrice').value = '';
+    }
+});
+
+document.getElementById('testBtn').addEventListener('click', runTests);
+
+// Real-time validation clearing
+['buyPrice', 'currentPrice', 'quantity'].forEach(id => {
+    document.getElementById(id).addEventListener('input', function () {
+        this.classList.remove('invalid');
+        document.getElementById(id + 'Err').textContent = '';
+    });
+});
+
+// Check server availability on load
+checkServer();
+</script>
+</body>
+</html>

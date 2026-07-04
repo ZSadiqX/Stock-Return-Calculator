@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/quote/:symbol",
+      "destination": "/api/quote.py?symbol=:symbol"
+    }
+  ]
+}
