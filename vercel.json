@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/quote/:symbol",
-      "destination": "/api/quote.py?symbol=:symbol"
+      "destination": "/api/quote?symbol=:symbol"
     }
   ]
 }
