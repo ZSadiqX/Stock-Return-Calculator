@@ -598,7 +598,7 @@ const API_BASE = window.location.origin;
 
 async function checkServer() {
     try {
-        const r = await fetch(API_BASE + '/api/quote/AAPL', { signal: AbortSignal.timeout(3000) });
+        const r = await fetch(API_BASE + '/api/quote/AAPL', { signal: AbortSignal.timeout(8000) });
         serverAvailable = r.ok;
     } catch { serverAvailable = false; }
 }
