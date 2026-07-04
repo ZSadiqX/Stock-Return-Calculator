@@ -1,0 +1,6 @@
+# Ignore local python files so Vercel doesn't try to build them as serverless functions
+server.py
+stock_calculator.py
+.git
+.gitignore
+README.md
